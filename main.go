@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -26,9 +27,6 @@ import (
 // INPUT VIDEO:
 // ./resources/input.mp4
 
-const BaMapFrames = true
-
-const BaFps = 30
 const AsciiMap = "@@#%xo;:,."
 
 func RGBAToGrayscale(rgba color.Color) uint8 {
@@ -65,7 +63,6 @@ func MapFrame(frame int) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer file.Close()
 
 	pixels, width, height, err := DecodeImage(file)
@@ -84,7 +81,6 @@ func MapFrame(frame int) string {
 		}
 		fmt.Fprintf(&frameAscii, "\n")
 	}
-	//fmt.Print(frameAscii)
 	return frameAscii.String()
 }
 
@@ -147,42 +143,52 @@ func ReadData() []string {
 }
 
 func main() {
-	_ = exec.Command("rm", "-f", "frames.dat").Run()
-	fmt.Println("Processing frames")
-	start := time.Now()
+	BaMapFrames := flag.Bool("m", true, "Whether to map the frames or not (Default: true)")
+	BaFps := flag.Int("f", 30, "Frames per second (Default: 30)")
+	BaAudio := flag.Bool("a", true, "Whether to play the audio or not (Default: true)")
+	flag.Parse()
+
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
 
 	// Yes, I should make CLI options for this, but I'm pretty lazy.
-	if BaMapFrames {
+	if *BaMapFrames {
+		_ = exec.Command("rm", "-f", "frames.dat").Run()
+		fmt.Println("Processing frames")
+		start := time.Now()
 		MapFrames()
+		fmt.Printf("Done processing frames in %s\n", time.Since(start))
 	}
-	fmt.Printf("Done processing frames in %s\n", time.Since(start))
 
-	fmt.Println("Processing audio")
-	start = time.Now()
-	_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
-	_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
-	f, err := os.Open("resources/input.mp3")
-	if err != nil {
-		log.Fatal(err)
+	if *BaAudio {
+		fmt.Println("Processing audio")
+		start := time.Now()
+		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
+		_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
+		f, err := os.Open("resources/input.mp3")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Done processing audio in %s\n", time.Since(start))
+
+		streamer, format, err := mp3.Decode(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer streamer.Close()
+
+		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+		speaker.Play(streamer)
+		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 	}
-	fmt.Printf("Done processing audio in %s\n", time.Since(start))
-
-	streamer, format, err := mp3.Decode(f)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer streamer.Close()
-
-	_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	speaker.Play(streamer)
-	_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 
 	frames := ReadData()
 	frame := 1
-	for range time.Tick(1000 / BaFps * time.Millisecond) {
+	ln := len(frames)
+	for range time.Tick(1000 / time.Duration(*BaFps) * time.Millisecond) {
+		if frame >= ln {
+			break
+		}
 		fmt.Println(frames[frame])
 		frame++
 	}
-	_ = exec.Command("rm", "-f", "frames.dat").Run()
 }
