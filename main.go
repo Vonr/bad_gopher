@@ -149,9 +149,9 @@ func main() {
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
 
 	if *BaAudio {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			fmt.Println("Processing audio")
@@ -163,6 +163,7 @@ func main() {
 	}
 
 	if *BaMapFrames {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			_ = exec.Command("rm", "-f", "frames.dat").Run()
