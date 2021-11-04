@@ -1,4 +1,4 @@
-#bad_gopher
+# bad_gopher
 
 Requires: ffmpeg
 
