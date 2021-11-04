@@ -178,9 +178,6 @@ func main() {
 	speaker.Play(streamer)
 	_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 
-	// Had to do this to synchronize the audio with the video properly.
-	time.Sleep(540 * time.Millisecond)
-
 	frames := ReadData()
 	frame := 1
 	for range time.Tick(1000 / BaFps * time.Millisecond) {
