@@ -147,6 +147,7 @@ func ReadData() []string {
 }
 
 func main() {
+	_ = exec.Command("rm", "-f", "frames.dat").Run()
 	fmt.Println("Processing frames")
 	start := time.Now()
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
@@ -175,6 +176,7 @@ func main() {
 
 	_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	speaker.Play(streamer)
+	_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 
 	// Had to do this to synchronize the audio with the video properly.
 	time.Sleep(540 * time.Millisecond)
@@ -185,4 +187,5 @@ func main() {
 		fmt.Println(frames[frame])
 		frame++
 	}
+	_ = exec.Command("rm", "-f", "frames.dat").Run()
 }
