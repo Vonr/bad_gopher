@@ -89,31 +89,30 @@ func MapFrames() {
 	_ = os.MkdirAll("resources/frames", 0775)
 	_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-vf", "scale=80:60", "resources/frames/frame-%d.jpg").Run()
 	files, _ := ioutil.ReadDir("resources/frames")
+	fSz := len(files)
 
-	jobs := make(chan int, len(files))
-	done := make(chan struct{}, len(files))
+	jobs := make(chan int, fSz)
 
 	var allFrames strings.Builder
-	allFrames.Grow(len(files))
+	allFrames.Grow(fSz)
 
 	frames := make([]string, len(files))
 	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(fSz)
 
 	for w := 1; w <= 16; w++ {
-		go worker(jobs, done, frames, &mu)
+		go worker(jobs, frames, &wg, &mu)
 	}
 
-	for i := 0; i < len(files); i++ {
+	for i := 0; i < fSz; i++ {
 		jobs <- i
 	}
 	close(jobs)
 
-	for i := 0; i < len(files); i++ {
-		<-done
-	}
-	for frame := 0; frame < len(files); frame++ {
+	wg.Wait()
+	for frame := 0; frame < fSz; frame++ {
 		fmt.Fprintf(&allFrames, "%s%s", frames[frame], "\r")
-		fmt.Printf("[frame: %d] ADDED\n", frame+1)
 	}
 
 	_ = exec.Command("rm", "-rf", "resources/frames").Run()
@@ -123,14 +122,13 @@ func MapFrames() {
 	}
 }
 
-func worker(jobs <-chan int, done chan<- struct{}, frames []string, mu *sync.Mutex) {
+func worker(jobs <-chan int, frames []string, wg *sync.WaitGroup, mu *sync.Mutex) {
 	for j := range jobs {
 		value := MapFrame(j + 1)
 		mu.Lock()
 		frames[j] = value
 		mu.Unlock()
-		done <- struct{}{}
-		fmt.Printf("[frame: %d] DONE\n", j+1)
+		wg.Done()
 	}
 }
 
@@ -150,32 +148,44 @@ func main() {
 
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
 
-	// Yes, I should make CLI options for this, but I'm pretty lazy.
-	if *BaMapFrames {
-		_ = exec.Command("rm", "-f", "frames.dat").Run()
-		fmt.Println("Processing frames")
-		start := time.Now()
-		MapFrames()
-		fmt.Printf("Done processing frames in %s\n", time.Since(start))
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	if *BaAudio {
-		fmt.Println("Processing audio")
-		start := time.Now()
-		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
-		_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
+		go func() {
+			defer wg.Done()
+			fmt.Println("Processing audio")
+			start := time.Now()
+			_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
+			_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
+			fmt.Printf("Done processing audio in %s\n", time.Since(start))
+		}()
+	}
+
+	if *BaMapFrames {
+		go func() {
+			defer wg.Done()
+			_ = exec.Command("rm", "-f", "frames.dat").Run()
+			fmt.Println("Processing frames")
+			start := time.Now()
+			MapFrames()
+			fmt.Printf("Done processing frames in %s\n", time.Since(start))
+		}()
+	}
+
+	wg.Wait()
+
+	if *BaAudio {
 		f, err := os.Open("resources/input.mp3")
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Done processing audio in %s\n", time.Since(start))
 
 		streamer, format, err := mp3.Decode(f)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer streamer.Close()
-
 		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 		speaker.Play(streamer)
 		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
