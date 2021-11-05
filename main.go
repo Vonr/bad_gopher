@@ -28,7 +28,7 @@ import (
 // INPUT VIDEO:
 // ./resources/input.mp4
 
-const AsciiMap = "@@#%xo;:,."
+const AsciiMap = "@%&#*o|!;:,."
 
 func RGBAToGrayscale(rgba color.Color) uint8 {
 	r, g, b, _ := rgba.RGBA()
@@ -77,7 +77,7 @@ func MapFrame(frame int) string {
 		for x := 0; x < width; x++ {
 			luminosity := pixels[y][x]
 
-			mapIndex := (255 - int16(luminosity)) * 10 / 256
+			mapIndex := (255 - int16(luminosity)) * 12 / 256
 			mapValue := AsciiMap[mapIndex]
 			frameAscii.WriteByte(mapValue)
 			frameAscii.WriteByte(mapValue)
