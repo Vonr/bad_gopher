@@ -187,6 +187,11 @@ func main() {
 
 	wg.Wait()
 
+	frames := ReadData()
+	frame := 1
+	ln := len(frames)
+	buf := bufio.NewWriter(os.Stdout)
+	defer buf.Flush()
 	if *BaAudio {
 		f, err := os.Open("resources/input.mp3")
 		if err != nil {
@@ -197,17 +202,12 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 		defer streamer.Close()
 		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 		speaker.Play(streamer)
-		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 	}
 
-	frames := ReadData()
-	frame := 1
-	ln := len(frames)
-	buf := bufio.NewWriter(os.Stdout)
-	defer buf.Flush()
 	for range time.Tick(1000 / time.Duration(*BaFps) * time.Millisecond) {
 		if frame >= ln {
 			break
