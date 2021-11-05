@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"image"
@@ -70,16 +71,18 @@ func MapFrame(frame int) string {
 		log.Fatal(err)
 	}
 
-	var frameAscii strings.Builder
+	frameAscii := strings.Builder{}
+	frameAscii.Grow(width*height + height)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			luminosity := pixels[y][x]
 
 			mapIndex := (255 - int16(luminosity)) * 10 / 256
-			mapValue := string(AsciiMap[mapIndex])
-			fmt.Fprintf(&frameAscii, "%s%s", mapValue, mapValue)
+			mapValue := AsciiMap[mapIndex]
+			frameAscii.WriteByte(mapValue)
+			frameAscii.WriteByte(mapValue)
 		}
-		fmt.Fprintf(&frameAscii, "\n")
+		frameAscii.WriteByte('\n')
 	}
 	return frameAscii.String()
 }
@@ -93,7 +96,7 @@ func MapFrames() {
 
 	jobs := make(chan int, fSz)
 
-	var allFrames strings.Builder
+	allFrames := strings.Builder{}
 	allFrames.Grow(fSz)
 
 	frames := make([]string, len(files))
@@ -112,13 +115,14 @@ func MapFrames() {
 
 	wg.Wait()
 	for frame := 0; frame < fSz; frame++ {
-		fmt.Fprintf(&allFrames, "%s%s", frames[frame], "\r")
+		allFrames.WriteString(frames[frame])
+		allFrames.WriteByte('\r')
 	}
 
 	_ = exec.Command("rm", "-rf", "resources/frames").Run()
 	err := ioutil.WriteFile("frames.dat", []byte(allFrames.String()), 0644)
 	if err != nil {
-		fmt.Printf("could not map frames\n%v\n", err)
+		fmt.Printf("Could not map frames\n%v\n", err)
 	}
 }
 
@@ -142,9 +146,16 @@ func ReadData() []string {
 
 func main() {
 	BaMapFrames := flag.Bool("m", true, "Whether to map the frames or not (Default: true)")
-	BaFps := flag.Int("f", 30, "Frames per second (Default: 30)")
+	BaFps := flag.Int("f", -1, "Frames per second (Default: Auto -1)")
 	BaAudio := flag.Bool("a", true, "Whether to play the audio or not (Default: true)")
 	flag.Parse()
+
+	if *BaFps == -1 {
+		bs, _ := exec.Command("ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", "resources/input.mp4").Output()
+		fps, _ := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(bs)), "/1"))
+		BaFps = &fps
+		fmt.Printf("Frames per second: %d\n", fps)
+	}
 
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
 
@@ -195,11 +206,13 @@ func main() {
 	frames := ReadData()
 	frame := 1
 	ln := len(frames)
+	buf := bufio.NewWriter(os.Stdout)
+	defer buf.Flush()
 	for range time.Tick(1000 / time.Duration(*BaFps) * time.Millisecond) {
 		if frame >= ln {
 			break
 		}
-		fmt.Println(frames[frame])
+		fmt.Fprintln(buf, frames[frame])
 		frame++
 	}
 }
