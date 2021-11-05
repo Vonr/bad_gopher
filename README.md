@@ -2,7 +2,7 @@
 
 Requires: ffmpeg, yt-dlp (optional)
 
-Usage: `bad_gopher -p <path> -u <url> -m <true/false> -a <true/false> -f <fps>`
+Usage: `bad_gopher -p=<path> -u=<url> -m=<true/false> -a=<true/false> -f=<fps> -c=<ascii map>`
 
 Default options:
 
@@ -15,6 +15,8 @@ Default options:
 - a: true
 
 - f: -1 \(Automatic)
+
+- c: `M@%#*+=-:. `
 
 Put an mp4 file in ./resources named input.mp4 and run the program.
 

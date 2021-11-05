@@ -21,3 +21,7 @@ bad_gopher
 tags
 
 frames.dat
+
+*.lock
+
+*.temp

@@ -30,7 +30,7 @@ import (
 // INPUT VIDEO:
 // Specify with -p=PATH or downlaod a youtube video with -u=URL, default is ./resources/input.mp4
 
-const AsciiMap = "@@#$S%?xoa*+-)/|!;:,."
+var AsciiMap string
 
 func RGBAToGrayscale(rgba color.Color) uint8 {
 	r, g, b, _ := rgba.RGBA()
@@ -162,7 +162,9 @@ func main() {
 	BaAudio := flag.Bool("a", true, "Whether to play the audio or not (Default: true)")
 	BaPath := flag.String("p", "resources/input.mp4", "Path to the video file (Default: resources/input.mp4)")
 	BaURL := flag.String("u", "", "URL to the video (Default: none)")
+	BaAscii := flag.String("c", "M@%#*+=-:. ", "Ascii map (Default: M@%#*+=-:. )")
 	flag.Parse()
+	AsciiMap = *BaAscii
 
 	_, err := exec.LookPath("ffmpeg")
 	if err != nil {
