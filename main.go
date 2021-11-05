@@ -251,7 +251,6 @@ func main() {
 	ln := len(frames)
 	frameTime := 1000 / time.Duration(*BaFps) * time.Millisecond
 	start := time.Now()
-	var elapsed time.Duration
 	total := time.Duration(len(frames)) * frameTime
 	totalText := fmt.Sprintf("%02d:%02d:%02d", int(math.Floor(total.Hours())), int(math.Floor(math.Mod(total.Minutes(), 60))), int(math.Floor(math.Mod(total.Seconds(), 60))))
 
@@ -271,15 +270,17 @@ func main() {
 		defer streamer.Close()
 		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 		speaker.Play(streamer)
+		start = time.Now()
 	}
 
+	var elapsed time.Duration
 	for range time.Tick(frameTime) {
-		if frame >= ln {
+		elapsed = (frameTime * time.Duration(frame)).Round(time.Second)
+		frame = int(math.Floor(float64(time.Since(start).Milliseconds()) / float64(frameTime.Milliseconds())))
+		if frame >= ln || elapsed > total {
 			break
 		}
-		elapsed = time.Since(start).Truncate(time.Second)
 
-		fmt.Fprintf(buf, "%s%02d:%02d:%02d / %s [%s]\n", frames[frame], int(math.Floor(elapsed.Hours())), int(math.Floor(math.Mod(elapsed.Minutes(), 60))), int(math.Floor(math.Mod(elapsed.Seconds(), 60))), totalText, constructDurationBar(elapsed, total))
-		frame++
+		fmt.Fprintf(buf, "%s%02.0f:%02.0f:%02.0f / %s [%s]\n", frames[frame], math.Floor(elapsed.Hours()), math.Floor(math.Mod(elapsed.Minutes(), 60)), math.Floor(math.Mod(elapsed.Seconds(), 60)), totalText, constructDurationBar(elapsed, total))
 	}
 }
