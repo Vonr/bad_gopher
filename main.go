@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 )
@@ -249,9 +250,11 @@ func main() {
 	frame := 1
 	ln := len(frames)
 	frameTime := 1000.0 / time.Duration(*BaFps) * time.Millisecond
-	start := time.Now()
 	total := time.Duration(len(frames)) * frameTime
 	totalText := fmt.Sprintf("%02d:%02d:%02d", int(math.Floor(total.Hours())), int(math.Floor(math.Mod(total.Minutes(), 60))), int(math.Floor(math.Mod(total.Seconds(), 60))))
+
+	var streamer beep.StreamSeekCloser
+	var format beep.Format
 
 	buf := bufio.NewWriter(os.Stdout)
 	defer buf.Flush()
@@ -261,21 +264,22 @@ func main() {
 			log.Fatal(err)
 		}
 
-		streamer, format, err := mp3.Decode(f)
+		s, fm, err := mp3.Decode(f)
 		if err != nil {
 			log.Fatal(err)
 		}
+		streamer = s
+		format = fm
 		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 		defer streamer.Close()
 		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 		speaker.Play(streamer)
-		start = time.Now()
 	}
 
 	var elapsed time.Duration
 	for range time.Tick(frameTime) {
-		elapsed = (frameTime * time.Duration(frame)).Round(time.Second)
-		frame = int(math.Floor(float64(time.Since(start).Milliseconds()) / float64(frameTime.Milliseconds())))
+		frame = int(time.Duration(time.Duration(format.SampleRate.D(streamer.Position())).Milliseconds()) / time.Duration(frameTime.Milliseconds()))
+		elapsed = (frameTime * time.Duration(frame)).Truncate(time.Second)
 		if frame >= ln || elapsed > total {
 			break
 		}
