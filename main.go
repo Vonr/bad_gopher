@@ -87,7 +87,7 @@ func MapFrame(frame int) string {
 	return frameAscii.String()
 }
 
-func MapFrames() {
+func MapFrames() []string {
 	_ = exec.Command("rm", "-rf", "resources/frames").Run()
 	_ = os.MkdirAll("resources/frames", 0775)
 	_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-vf", "scale=80:60", "resources/frames/frame-%d.jpg").Run()
@@ -124,6 +124,8 @@ func MapFrames() {
 	if err != nil {
 		fmt.Printf("Could not map frames\n%v\n", err)
 	}
+
+	return frames
 }
 
 func worker(jobs <-chan int, frames []string, wg *sync.WaitGroup, mu *sync.Mutex) {
@@ -173,6 +175,7 @@ func main() {
 		}()
 	}
 
+	var frames []string
 	if *BaMapFrames {
 		wg.Add(1)
 		go func() {
@@ -180,14 +183,17 @@ func main() {
 			_ = exec.Command("rm", "-f", "frames.dat").Run()
 			fmt.Println("Processing frames")
 			start := time.Now()
-			MapFrames()
+			frames = MapFrames()
 			fmt.Printf("Done processing frames in %s\n", time.Since(start))
 		}()
 	}
 
 	wg.Wait()
 
-	frames := ReadData()
+	if !*BaMapFrames {
+		frames = ReadData()
+	}
+
 	frame := 1
 	ln := len(frames)
 	buf := bufio.NewWriter(os.Stdout)
