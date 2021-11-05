@@ -30,7 +30,7 @@ import (
 // INPUT VIDEO:
 // Specify with -p=PATH or downlaod a youtube video with -u=URL, default is ./resources/input.mp4
 
-const AsciiMap = "@%&#*o|!;:,."
+const AsciiMap = "@@#$S%?xoa*+-)/|!;:,."
 
 func RGBAToGrayscale(rgba color.Color) uint8 {
 	r, g, b, _ := rgba.RGBA()
@@ -79,7 +79,7 @@ func MapFrame(frame int) string {
 		for x := 0; x < width; x++ {
 			luminosity := pixels[y][x]
 
-			mapIndex := (255 - int16(luminosity)) * 12 / 256
+			mapIndex := (255 - int16(luminosity)) * int16(len(AsciiMap)) / 256
 			mapValue := AsciiMap[mapIndex]
 			frameAscii.WriteByte(mapValue)
 			frameAscii.WriteByte(mapValue)
@@ -205,9 +205,11 @@ func main() {
 
 	if *BaFps == -1 {
 		bs, _ := exec.Command("ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", *BaPath).Output()
-		fps, _ := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(bs)), "/1"))
-		BaFps = &fps
-		fmt.Printf("Frames per second: %d\n", fps)
+		fpsFrac := strings.Split(strings.TrimSpace(string(bs)), "/")
+		numerator, _ := strconv.ParseFloat(fpsFrac[0], 64)
+		denominator, _ := strconv.ParseFloat(fpsFrac[1], 64)
+		*BaFps = int(math.Round(numerator / denominator))
+		fmt.Printf("Frames per second: %d\n", *BaFps)
 	}
 
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
