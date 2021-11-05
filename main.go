@@ -9,6 +9,7 @@ import (
 	"image/jpeg"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -146,6 +147,14 @@ func ReadData() []string {
 	return strings.Split(string(bytes), "\r")
 }
 
+func constructDurationBar(current time.Duration, total time.Duration) string {
+	bar := strings.Builder{}
+	bar.Grow(100)
+	bar.WriteString(strings.Repeat("\u2593", int(math.Ceil(float64(current)/float64(total)*100))))
+	bar.WriteString(strings.Repeat("\u2591", 100-int(math.Ceil(float64(current)/float64(total)*100))))
+	return bar.String()
+}
+
 func main() {
 	BaMapFrames := flag.Bool("m", true, "Whether to map the frames or not (Default: true)")
 	BaFps := flag.Int("f", -1, "Frames per second (Default: Auto -1)")
@@ -196,6 +205,12 @@ func main() {
 
 	frame := 1
 	ln := len(frames)
+	frameTime := 1000 / time.Duration(*BaFps) * time.Millisecond
+	start := time.Now()
+	elapsed := time.Since(start)
+	total := time.Duration(len(frames)) * frameTime
+	totalText := fmt.Sprintf("%02d:%02d:%02d", int(math.Floor(total.Hours())), int(math.Floor(math.Mod(total.Minutes(), 60))), int(math.Floor(math.Mod(total.Seconds(), 60))))
+
 	buf := bufio.NewWriter(os.Stdout)
 	defer buf.Flush()
 	if *BaAudio {
@@ -214,11 +229,13 @@ func main() {
 		speaker.Play(streamer)
 	}
 
-	for range time.Tick(1000 / time.Duration(*BaFps) * time.Millisecond) {
+	for range time.Tick(frameTime) {
 		if frame >= ln {
 			break
 		}
-		fmt.Fprintln(buf, frames[frame])
+		elapsed = time.Since(start).Truncate(time.Second)
+
+		fmt.Fprintf(buf, "%s%02d:%02d:%02d / %s [%s]\n", frames[frame], int(math.Floor(elapsed.Hours())), int(math.Floor(math.Mod(elapsed.Minutes(), 60))), int(math.Floor(math.Mod(elapsed.Seconds(), 60))), totalText, constructDurationBar(elapsed, total))
 		frame++
 	}
 }
