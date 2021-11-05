@@ -26,8 +26,9 @@ import (
 // on 1080p you probably only have to go fullscreen.
 // REQUIREMENTS:
 // - ffmpeg
+// - yt-dlp (if you want to download youtube videos)
 // INPUT VIDEO:
-// ./resources/input.mp4
+// Specify with -p=PATH or downlaod a youtube video with -u=URL, default is ./resources/input.mp4
 
 const AsciiMap = "@%&#*o|!;:,."
 
@@ -88,10 +89,10 @@ func MapFrame(frame int) string {
 	return frameAscii.String()
 }
 
-func MapFrames() []string {
+func MapFrames(path string) []string {
 	_ = exec.Command("rm", "-rf", "resources/frames").Run()
 	_ = os.MkdirAll("resources/frames", 0775)
-	_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-vf", "scale=80:60", "resources/frames/frame-%d.jpg").Run()
+	_ = exec.Command("ffmpeg", "-i", path, "-vf", "scale=80:60", "resources/frames/frame-%d.jpg").Run()
 	files, _ := ioutil.ReadDir("resources/frames")
 	fSz := len(files)
 
@@ -159,10 +160,51 @@ func main() {
 	BaMapFrames := flag.Bool("m", true, "Whether to map the frames or not (Default: true)")
 	BaFps := flag.Int("f", -1, "Frames per second (Default: Auto -1)")
 	BaAudio := flag.Bool("a", true, "Whether to play the audio or not (Default: true)")
+	BaPath := flag.String("p", "resources/input.mp4", "Path to the video file (Default: resources/input.mp4)")
+	BaURL := flag.String("u", "", "URL to the video (Default: none)")
 	flag.Parse()
 
+	_, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		log.Fatalln("ffmpeg is not installed")
+		return
+	}
+	if *BaURL != "" {
+		_, err = exec.LookPath("yt-dlp")
+		if err != nil {
+			log.Fatalln("yt-dlp is not installed\nGet it ")
+			return
+		}
+		fmt.Println("Searching for youtube video...")
+		vId := ""
+		// Clean url string
+		url := strings.TrimPrefix(*BaURL, "https://")
+		url = strings.TrimPrefix(url, "http://")
+		url = strings.TrimPrefix(url, "www.")
+		url = strings.TrimSuffix(url, "/")
+		// Parse youtube URL into video ID
+		if strings.Contains(url, "youtube.com") {
+			vId = strings.Split(url, "/")[len(strings.Split(url, "/"))-1]
+			vId = strings.Split(vId, "=")[1]
+		} else if strings.Contains(url, "youtu.be") {
+			vId = strings.Split(url, "/")[len(strings.Split(url, "/"))-1]
+		} else {
+			log.Fatalln("Invalid URL")
+			return
+		}
+		*BaPath = "resources/dl.mp4"
+		// Remove downloaded video
+		_ = exec.Command("rm", "-f", *BaPath).Run()
+
+		// Download video with yt-dlp into resources as dl.mp4
+		fmt.Println("Downloading video...")
+		start := time.Now()
+		_ = exec.Command("yt-dlp", "-f", "mp4", "-o", *BaPath, vId).Run()
+		fmt.Println("Video downloaded in", time.Since(start))
+	}
+
 	if *BaFps == -1 {
-		bs, _ := exec.Command("ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", "resources/input.mp4").Output()
+		bs, _ := exec.Command("ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", *BaPath).Output()
 		fps, _ := strconv.Atoi(strings.TrimSuffix(strings.TrimSpace(string(bs)), "/1"))
 		BaFps = &fps
 		fmt.Printf("Frames per second: %d\n", fps)
@@ -179,7 +221,7 @@ func main() {
 			fmt.Println("Processing audio")
 			start := time.Now()
 			_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
-			_ = exec.Command("ffmpeg", "-i", "resources/input.mp4", "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
+			_ = exec.Command("ffmpeg", "-i", *BaPath, "-q:a", "0", "-map", "a", "resources/input.mp3").Run()
 			fmt.Printf("Done processing audio in %s\n", time.Since(start))
 		}()
 	}
@@ -192,7 +234,7 @@ func main() {
 			_ = exec.Command("rm", "-f", "frames.dat").Run()
 			fmt.Println("Processing frames")
 			start := time.Now()
-			frames = MapFrames()
+			frames = MapFrames(*BaPath)
 			fmt.Printf("Done processing frames in %s\n", time.Since(start))
 		}()
 	}
@@ -207,7 +249,7 @@ func main() {
 	ln := len(frames)
 	frameTime := 1000 / time.Duration(*BaFps) * time.Millisecond
 	start := time.Now()
-	elapsed := time.Since(start)
+	var elapsed time.Duration
 	total := time.Duration(len(frames)) * frameTime
 	totalText := fmt.Sprintf("%02d:%02d:%02d", int(math.Floor(total.Hours())), int(math.Floor(math.Mod(total.Minutes(), 60))), int(math.Floor(math.Mod(total.Seconds(), 60))))
 
