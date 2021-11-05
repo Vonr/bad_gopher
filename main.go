@@ -158,7 +158,7 @@ func constructDurationBar(current time.Duration, total time.Duration) string {
 
 func main() {
 	BaMapFrames := flag.Bool("m", true, "Whether to map the frames or not (Default: true)")
-	BaFps := flag.Int("f", -1, "Frames per second (Default: Auto -1)")
+	BaFps := flag.Float64("f", -1, "Frames per second (Default: Auto -1)")
 	BaAudio := flag.Bool("a", true, "Whether to play the audio or not (Default: true)")
 	BaPath := flag.String("p", "resources/input.mp4", "Path to the video file (Default: resources/input.mp4)")
 	BaURL := flag.String("u", "", "URL to the video (Default: none)")
@@ -188,9 +188,6 @@ func main() {
 			vId = strings.Split(vId, "=")[1]
 		} else if strings.Contains(url, "youtu.be") {
 			vId = strings.Split(url, "/")[len(strings.Split(url, "/"))-1]
-		} else {
-			log.Fatalln("Invalid URL")
-			return
 		}
 		*BaPath = "resources/dl.mp4"
 		// Remove downloaded video
@@ -208,8 +205,8 @@ func main() {
 		fpsFrac := strings.Split(strings.TrimSpace(string(bs)), "/")
 		numerator, _ := strconv.ParseFloat(fpsFrac[0], 64)
 		denominator, _ := strconv.ParseFloat(fpsFrac[1], 64)
-		*BaFps = int(math.Round(numerator / denominator))
-		fmt.Printf("Frames per second: %d\n", *BaFps)
+		*BaFps = math.Round(numerator / denominator)
+		fmt.Printf("Frames per second: %.3f\n", *BaFps)
 	}
 
 	image.RegisterFormat("jpg", "jpg", jpeg.Decode, jpeg.DecodeConfig)
@@ -249,7 +246,7 @@ func main() {
 
 	frame := 1
 	ln := len(frames)
-	frameTime := 1000 / time.Duration(*BaFps) * time.Millisecond
+	frameTime := 1000.0 / time.Duration(*BaFps) * time.Millisecond
 	start := time.Now()
 	total := time.Duration(len(frames)) * frameTime
 	totalText := fmt.Sprintf("%02d:%02d:%02d", int(math.Floor(total.Hours())), int(math.Floor(math.Mod(total.Minutes(), 60))), int(math.Floor(math.Mod(total.Seconds(), 60))))

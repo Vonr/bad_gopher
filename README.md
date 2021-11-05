@@ -21,4 +21,4 @@ Put an mp4 file in ./resources named input.mp4 and run the program.
 Youtube videos:
 
 [![Bad Apple](https://img.youtube.com/vi/DumQPTVRE0U/0.jpg)](https://www.youtube.com/watch?v=DumQPTVRE0U "Bad Apple")
-[![Lagtrain](https://img.youtube.com/vi/wvWIt5OnPyI/0.jpg)](https://www.youtube.com/watch?v=wvWIt5OnPyI "Lagtrain")
+[![Lagtrain](https://img.youtube.com/vi/7Vo3keJ3ups/0.jpg)](https://www.youtube.com/watch?v=wvWIt5OnPyI "Lagtrain")
