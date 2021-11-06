@@ -273,7 +273,7 @@ func main() {
 		format = fm
 		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 		defer streamer.Close()
-		_ = speaker.Init(format.SampleRate, format.SampleRate.N(frameTime/4))
+		_ = speaker.Init(format.SampleRate, format.SampleRate.N(frameTime/2))
 		speaker.Play(streamer)
 	}
 
