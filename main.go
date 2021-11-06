@@ -273,19 +273,15 @@ func main() {
 		format = fm
 		_ = exec.Command("rm", "-f", "resources/input.mp3").Run()
 		defer streamer.Close()
-		_ = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+		_ = speaker.Init(format.SampleRate, format.SampleRate.N(frameTime/4))
 		speaker.Play(streamer)
 	}
 
 	var elapsed time.Duration
 	lastFrameTime := time.Now()
-	lastFrame := -1
 	for range time.Tick(frameTime) {
 		if *BaAudio {
 			frame = int(format.SampleRate.D(streamer.Position()).Milliseconds() / frameTime.Milliseconds())
-			if frame <= lastFrame {
-				frame = lastFrame + 1
-			}
 		} else {
 			frame++
 		}
@@ -297,6 +293,5 @@ func main() {
 
 		fmt.Printf("%s%02.0f:%02.0f:%02.0f / %s [%s] %.2fms on frame %d\n", frames[frame], math.Floor(elapsed.Hours()), math.Floor(math.Mod(elapsed.Minutes(), 60)), math.Floor(math.Mod(elapsed.Seconds(), 60)), totalText, constructDurationBar(elapsed, total), float64(time.Since(lastFrameTime).Microseconds())*0.001, frame)
 		lastFrameTime = time.Now()
-		lastFrame = frame
 	}
 }
