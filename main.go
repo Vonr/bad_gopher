@@ -279,7 +279,7 @@ func main() {
 
 	var elapsed time.Duration
 	lastFrameTime := time.Now()
-	rows := strings.Count(frames[0], "\n") + 1
+	rows := strings.Count(frames[0], "\n")
 	fmt.Fprintf(buf, "%s", strings.Repeat("\n", rows))
 	for range time.Tick(frameTime) {
 		if *BaAudio {
@@ -293,7 +293,7 @@ func main() {
 			break
 		}
 
-		fmt.Fprintf(buf, "\r\033[K\r%s%s%02.0f:%02.0f:%02.0f / %s [%s] %.2fms on frame %d", strings.Repeat("\033[A\r\033[0K\r", rows-1), frames[frame], math.Floor(elapsed.Hours()), math.Floor(math.Mod(elapsed.Minutes(), 60)), math.Floor(math.Mod(elapsed.Seconds(), 60)), totalText, constructDurationBar(elapsed, total), float64(time.Since(lastFrameTime).Microseconds())*0.001, frame)
+		fmt.Fprintf(buf, "\r\033[%dA\r%s%02.0f:%02.0f:%02.0f / %s [%s] %.2fms on frame %d ", rows, frames[frame], math.Floor(elapsed.Hours()), math.Floor(math.Mod(elapsed.Minutes(), 60)), math.Floor(math.Mod(elapsed.Seconds(), 60)), totalText, constructDurationBar(elapsed, total), float64(time.Since(lastFrameTime).Microseconds())*0.001, frame)
 		lastFrameTime = time.Now()
 	}
 }
